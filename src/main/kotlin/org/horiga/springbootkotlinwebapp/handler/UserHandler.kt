@@ -1,5 +1,7 @@
 package org.horiga.springbootkotlinwebapp.handler
 
+import org.horiga.springbootkotlinwebapp.domain.User
+import org.horiga.springbootkotlinwebapp.filter.RequestFilter
 import org.horiga.springbootkotlinwebapp.json
 import org.horiga.springbootkotlinwebapp.repository.UserRepository
 import org.slf4j.LoggerFactory
@@ -15,7 +17,7 @@ import reactor.core.publisher.Mono
 import java.util.*
 
 @Configuration
-class UserRouter(private val handler: UserHandler) {
+class UserRouter (private val handler: UserHandler, private val requestFilter: RequestFilter) {
 
     @Bean
     fun routes() = router {
@@ -26,8 +28,13 @@ class UserRouter(private val handler: UserHandler) {
                 GET("/members", handler::find)
             }
         }
-    }
+    }.filter(requestFilter)
 }
+
+data class AddUserMessage(
+        val displayName: String,
+        val age: Int
+)
 
 @Component
 class UserHandler(private val userRepository: UserRepository) {
@@ -36,14 +43,19 @@ class UserHandler(private val userRepository: UserRepository) {
         val log = LoggerFactory.getLogger(UserHandler::class.java)!!
     }
 
-    fun add(req: ServerRequest): Mono<ServerResponse> =
-            req.bodyToMono(User::class.java).flatMap { message ->
-                ServerResponse.ok().json().body(BodyInserters.fromObject(
-                        User(UUID.randomUUID().toString().replace("-", ""), message.displayName, message.age)
-                                .also { user -> userRepository.add(user) }))
-            }
+    fun add(req: ServerRequest): Mono<ServerResponse> = try {
+        log.info("[Started] UserHandler#add")
+        req.bodyToMono(AddUserMessage::class.java).flatMap { message ->
+            ServerResponse.ok().json().body(BodyInserters.fromObject(
+                    User(UUID.randomUUID().toString().replace("-", ""), message.displayName, message.age)
+                            .also { user -> userRepository.add(user) }))
+        }
+    } finally {
+        log.info("[Finished] UserHandler#add")
+    }
 
-    fun find(req: ServerRequest): Mono<ServerResponse> {
+    fun find(req: ServerRequest): Mono<ServerResponse> = try {
+        log.info("[Started] UserHandler#find")
         val result = if (req.queryParam("filterBy").isPresent) {
             userRepository.getAll().filter {
                 val filterBy = req.queryParam("filterBy").get()
@@ -82,21 +94,22 @@ class UserHandler(private val userRepository: UserRepository) {
             }
         } else userRepository.getAll()
 
-        return ServerResponse.ok().json().body(BodyInserters.fromObject(result.sortedBy {
+        ServerResponse.ok().json().body(BodyInserters.fromObject(result.sortedBy {
             val sortBy = req.queryParam("sortBy").orElse("id")
             when(sortBy) {
                 "displayName" -> it.displayName
                 else -> it.id
             }
         }))
+    } finally {
+        log.info("[Finished] UserHandler#add")
     }
 
-    fun findById(req: ServerRequest): Mono<ServerResponse> =
-            ServerResponse.ok().json().body(BodyInserters.fromObject(userRepository.get(req.pathVariable("id"))))
-}
+    fun findById(req: ServerRequest): Mono<ServerResponse> = try {
+        log.info("[Started] UserHandler#findBy")
+        ServerResponse.ok().json().body(BodyInserters.fromObject(userRepository.get(req.pathVariable("id"))))
+    } finally {
+        log.info("[Finished] UserHandler#findBy")
+    }
 
-data class User(
-        val id: String,
-        val displayName: String,
-        val age: Int
-)
+}

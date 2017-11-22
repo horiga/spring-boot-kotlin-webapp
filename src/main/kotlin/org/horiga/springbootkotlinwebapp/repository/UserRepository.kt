@@ -1,6 +1,6 @@
 package org.horiga.springbootkotlinwebapp.repository
 
-import org.horiga.springbootkotlinwebapp.handler.User
+import org.horiga.springbootkotlinwebapp.domain.User
 
 interface UserRepository {
     fun getAll(): Collection<User>
