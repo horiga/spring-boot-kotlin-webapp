@@ -1,5 +1,6 @@
 package org.horiga.springbootkotlinwebapp.handler
 
+import org.hibernate.validator.constraints.Range
 import org.horiga.springbootkotlinwebapp.domain.User
 import org.horiga.springbootkotlinwebapp.filter.RequestFilter
 import org.horiga.springbootkotlinwebapp.json
@@ -15,6 +16,7 @@ import org.springframework.web.reactive.function.server.ServerResponse
 import org.springframework.web.reactive.function.server.router
 import reactor.core.publisher.Mono
 import java.util.*
+import javax.validation.constraints.NotBlank
 
 @Configuration
 class UserRouter (private val handler: UserHandler, private val requestFilter: RequestFilter) {
@@ -32,7 +34,9 @@ class UserRouter (private val handler: UserHandler, private val requestFilter: R
 }
 
 data class AddUserMessage(
+        @get:NotBlank
         val displayName: String,
+        @get:Range(min=1, max=999)
         val age: Int
 )
 
