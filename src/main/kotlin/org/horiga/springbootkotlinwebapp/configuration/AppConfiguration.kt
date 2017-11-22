@@ -1,8 +1,3 @@
-/*
- * Copyright (c) 2017 LINE Corporation. All rights reserved.
- * LINE Corporation PROPRIETARY/CONFIDENTIAL. Use is subject to license terms.
- */
-
 package org.horiga.springbootkotlinwebapp.configuration
 
 import org.horiga.springbootkotlinwebapp.repository.OnMemoryUserRepository
