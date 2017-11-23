@@ -19,24 +19,47 @@ import java.util.*
 import javax.validation.constraints.NotBlank
 
 @Configuration
-class UserRouter (private val handler: UserHandler, private val requestFilter: RequestFilter) {
+class UserRouter(private val handler: UserHandler, private val requestFilter: RequestFilter) {
+
+    companion object {
+        val log = LoggerFactory.getLogger(UserRouter::class.java)!!
+    }
 
     @Bean
-    fun routes() = router {
-        (accept(MediaType.APPLICATION_JSON) and "/api").nest {
-            "/user".nest {
-                POST("/", handler::add)
-                GET("/{id}", handler::findById)
-                GET("/members", handler::find)
+    fun routes() {
+
+//        @Suppress("UNCHECKED_CAST")
+//        val requestProcessor = ofRequestProcessor {
+//            log.debug("\n${it.methodName()} ${it.path()}")
+//            it.headers().asHttpHeaders().forEach { key, value -> log.debug("$key: $value") }
+//            Mono.just(it)
+//        }
+
+        // ofResponseProcessor(...
+//        val responseProcessor: HandlerFilterFunction<ServerResponse, ServerResponse>
+//                = ofResponseProcessor {
+//            Mono.just(it)
+//        }
+
+        router {
+            (accept(MediaType.APPLICATION_JSON) and "/api").nest {
+                "/user".nest {
+                    POST("/", handler::add)
+                    GET("/{id}", handler::findById)
+                    GET("/members", handler::find)
+                }
             }
         }
-    }.filter(requestFilter)
+                .filter(requestFilter)
+//                .filter(requestProcessor)
+//                .filter(responseProcessor)
+    }
 }
 
 data class AddUserMessage(
         @get:NotBlank
         val displayName: String,
-        @get:Range(min=1, max=999)
+        @get:Range(min = 1, max = 999)
         val age: Int
 )
 
@@ -100,7 +123,7 @@ class UserHandler(private val userRepository: UserRepository) {
 
         ServerResponse.ok().json().body(BodyInserters.fromObject(result.sortedBy {
             val sortBy = req.queryParam("sortBy").orElse("id")
-            when(sortBy) {
+            when (sortBy) {
                 "displayName" -> it.displayName
                 else -> it.id
             }
@@ -115,5 +138,4 @@ class UserHandler(private val userRepository: UserRepository) {
     } finally {
         log.info("[Finished] UserHandler#findBy")
     }
-
 }

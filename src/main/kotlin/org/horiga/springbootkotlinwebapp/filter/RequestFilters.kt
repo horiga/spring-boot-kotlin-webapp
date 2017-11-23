@@ -17,7 +17,7 @@ class RequestFilter : HandlerFilterFunction<ServerResponse, ServerResponse> {
 
     override fun filter(request: ServerRequest?, next: HandlerFunction<ServerResponse>?): Mono<ServerResponse>? {
         try {
-            log.info("[Started] RequestFilter#filter - ${request?.method()} ${request?.path()}")
+            log.info("[Started] RequestFilter#filter")
             return next?.handle(request!!)
         } finally {
             log.info("[Finished] RequestFilter#filter")
