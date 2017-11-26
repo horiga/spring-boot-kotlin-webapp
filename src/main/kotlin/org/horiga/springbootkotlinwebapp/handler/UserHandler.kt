@@ -2,6 +2,7 @@ package org.horiga.springbootkotlinwebapp.handler
 
 import org.hibernate.validator.constraints.Range
 import org.horiga.springbootkotlinwebapp.domain.User
+import org.horiga.springbootkotlinwebapp.filter.ElapsedLoggingFilter
 import org.horiga.springbootkotlinwebapp.filter.RequestFilter
 import org.horiga.springbootkotlinwebapp.json
 import org.horiga.springbootkotlinwebapp.repository.UserRepository
@@ -11,6 +12,9 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.http.MediaType
 import org.springframework.stereotype.Component
 import org.springframework.web.reactive.function.BodyInserters
+import org.springframework.web.reactive.function.server.HandlerFilterFunction
+import org.springframework.web.reactive.function.server.HandlerFilterFunction.ofResponseProcessor
+import org.springframework.web.reactive.function.server.RouterFunction
 import org.springframework.web.reactive.function.server.ServerRequest
 import org.springframework.web.reactive.function.server.ServerResponse
 import org.springframework.web.reactive.function.server.router
@@ -19,29 +23,27 @@ import java.util.*
 import javax.validation.constraints.NotBlank
 
 @Configuration
-class UserRouter(private val handler: UserHandler, private val requestFilter: RequestFilter) {
+class UserRouter(private val handler: UserHandler,
+                 private val requestFilter: RequestFilter,
+                 private val elapsedLoggingFilter: ElapsedLoggingFilter) {
 
     companion object {
         val log = LoggerFactory.getLogger(UserRouter::class.java)!!
     }
 
     @Bean
-    fun routes() {
+    fun routes(): RouterFunction<ServerResponse>? {
 
-//        @Suppress("UNCHECKED_CAST")
-//        val requestProcessor = ofRequestProcessor {
-//            log.debug("\n${it.methodName()} ${it.path()}")
-//            it.headers().asHttpHeaders().forEach { key, value -> log.debug("$key: $value") }
-//            Mono.just(it)
-//        }
+        // Does not works
+        val responseLoggingFilter: HandlerFilterFunction<ServerResponse, ServerResponse> = ofResponseProcessor {
+            log.info("!!!!! ofResponseProcessor#it.javaClass.canonicalName=${it.javaClass.canonicalName}")
+            if (it.statusCode().isError) {
+                log.error("HTTP status is error. HTTP.status=${it.statusCode().value()}")
+            }
+            Mono.just(it)
+        }
 
-        // ofResponseProcessor(...
-//        val responseProcessor: HandlerFilterFunction<ServerResponse, ServerResponse>
-//                = ofResponseProcessor {
-//            Mono.just(it)
-//        }
-
-        router {
+        return router {
             (accept(MediaType.APPLICATION_JSON) and "/api").nest {
                 "/user".nest {
                     POST("/", handler::add)
@@ -49,19 +51,17 @@ class UserRouter(private val handler: UserHandler, private val requestFilter: Re
                     GET("/members", handler::find)
                 }
             }
-        }
-                .filter(requestFilter)
-//                .filter(requestProcessor)
-//                .filter(responseProcessor)
+        }.filter(requestFilter).filter(elapsedLoggingFilter)
+                .filter(responseLoggingFilter)
     }
 }
 
+// Does not work validation
 data class AddUserMessage(
-        @get:NotBlank
-        val displayName: String,
-        @get:Range(min = 1, max = 999)
-        val age: Int
-)
+    @get:NotBlank
+    val displayName: String,
+    @get:Range(min = 1, max = 999)
+    val age: Int)
 
 @Component
 class UserHandler(private val userRepository: UserRepository) {
